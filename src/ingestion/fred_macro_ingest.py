@@ -5,9 +5,8 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 
-# -----------------------
+
 # Config
-# -----------------------
 METADATA_FILE = "data/metadata/fred_ingestion_state.json"
 load_dotenv()
 
@@ -25,18 +24,16 @@ SERIES = {
 
 RAW_DIR = "data/raw/fred"
 
-# -----------------------
+
 # Logging
-# -----------------------
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# -----------------------
+
 # Fetch Data
-# -----------------------
 
 def fetch_series(series_id, last_date=None):
 
@@ -56,9 +53,8 @@ def fetch_series(series_id, last_date=None):
     return response.json()
 
 
-# -----------------------
+
 # Save Raw JSON (Immutable)
-# -----------------------
 
 def save_raw(series_id, data):
 
@@ -74,9 +70,8 @@ def save_raw(series_id, data):
 
     return file_path
 
-# ----------------------
+
 # Metadate
-# ---------------------
 def save_metadata(series_id, raw_json, status="SUCCESS"):
 
     os.makedirs("data/metadata", exist_ok=True)
@@ -107,9 +102,8 @@ def save_metadata(series_id, raw_json, status="SUCCESS"):
         json.dump(history, f, indent=2)
 
 
-# -----------------------
+
 # Main Pipeline
-# -----------------------
 
 def main():
 

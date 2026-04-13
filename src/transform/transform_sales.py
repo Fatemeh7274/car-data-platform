@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # Paths
 
 RAW_DIR = Path("external_data/sales")
-STAGING_DIR = Path(r"data\processed\sales")  
+STAGING_DIR = Path(r"data\staging\sales")  
 STAGING_DIR.mkdir(parents=True, exist_ok=True)
  
 # Load latest CSV
@@ -101,7 +101,7 @@ def save_parquet(df, input_file):
 
     date_str = input_file.stem.split("_")[-1]
 
-    output_dir = STAGING_DIR / f"stg_sales_{date_str}"
+    output_dir = STAGING_DIR 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     df.to_parquet(

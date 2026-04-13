@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 RAW_PATH = Path("data/raw/fred")
-PROCESSED_PATH = Path("data/processed/fred")
+PROCESSED_PATH = Path("data/staging/fred")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -73,8 +73,9 @@ def load_raw_files(series_id):
         df = clean_dataframe(df, series_id)
 
         dfs.append(df)
+
         if not dfs:
-         return pd.DataFrame()
+          return pd.DataFrame()
 
     final_df = pd.concat(dfs, ignore_index=True)
 

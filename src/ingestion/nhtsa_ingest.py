@@ -5,9 +5,8 @@ from datetime import datetime
 from pathlib import Path
 import logging
 
-# -----------------------
+
 # Logging
-# -----------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,17 +14,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# -----------------------
+
 # Config
-# -----------------------
 
 BASE_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/getallmanufacturers"
 
 METADATA_FILE = Path("metadata/nhtsa_last_ingestion.json")
 
-# -----------------------
+
 # Partition
-# -----------------------
 
 def get_current_partition():
     now = datetime.utcnow()
@@ -36,9 +33,8 @@ def get_current_partition():
         "date_str": now.strftime("%Y%m%d")
     }
 
-# -----------------------
+
 # Metadata State
-# -----------------------
 
 def get_last_ingestion_date():
     if not METADATA_FILE.exists():
@@ -65,9 +61,8 @@ def save_ingestion_metadata(record_count):
     with open(metadata_file, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
-# -----------------------
+
 # Fetch API Data
-# -----------------------
 
 def fetch_data():
     params = {
@@ -89,12 +84,11 @@ def fetch_data():
     response.raise_for_status()
     return response.json()
 
-# -----------------------
+
 # Storage
-# -----------------------
 
 def build_output_path(partition):
-    base_path = Path("data/raw/api/nhtsa")
+    base_path = Path("data/raw/nhtsa")
 
     full_path = (
         base_path /
@@ -134,9 +128,8 @@ def save_metadata(output_path, data_file_path, record_count):
 
     return metadata_path
 
-# -----------------------
+
 # Main Pipeline
-# -----------------------
 
 def main():
 
