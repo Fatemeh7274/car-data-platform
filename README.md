@@ -129,3 +129,26 @@ Fatemeh Sarikhani
 Data Engineering Project – Portfolio Repository
 
 
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+
+A[Data Sources<br/>FRED / NHTSA / Sales APIs] --> B[Ingestion Layer]
+B --> C[Raw/Staging Tables]
+
+C --> D[Transformation Layer<br/>Data Cleaning & Standardization]
+D --> E[Validation Layer<br/>Data Quality Checks]
+
+E --> F[Data Warehouse<br/>Star Schema]
+
+F --> G[Fact Tables]
+F --> H[Dimension Tables]
+
+G --> I[Analytics Layer]
+H --> I
+
+I --> J[Power BI Dashboard / Reporting]
+
+
