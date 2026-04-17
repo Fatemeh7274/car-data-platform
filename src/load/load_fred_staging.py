@@ -1,15 +1,14 @@
 import os
 import logging
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from pathlib import Path
 from datetime import datetime
 import json
 from time import sleep
 
-# -----------------------
+
 # CONFIG
-# -----------------------
 
 DB_URI = os.getenv(
     "POSTGRES_URI",
@@ -25,9 +24,8 @@ RETRY_DELAY = 5
 
 METADATA_FILE = Path("data/metadata/stg_fred_load_metadata.json")
 
-# -----------------------
+
 # LOGGING
-# -----------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,39 +34,31 @@ logging.basicConfig(
 
 logger = logging.getLogger("fred_loader")
 
-# -----------------------
+
 # DISCOVER FILES
-# -----------------------
 
 def discover_files():
     return sorted(BASE_PATH.glob("series_id=*/year=*/month=*/*.parquet"))
 
-# -----------------------
-# EXTRACT PARTITION
-# -----------------------
+
+# EXTRACT PARTITION INFO
 
 def extract_info(path: Path):
 
-    series_id = None
-    year = None
-    month = None
+    series_id, year, month = None, None, None
 
     for p in path.parts:
-
         if p.startswith("series_id="):
             series_id = p.split("=")[1]
-
         if p.startswith("year="):
             year = p.split("=")[1]
-
         if p.startswith("month="):
             month = p.split("=")[1]
 
     return series_id, year, month
 
-# -----------------------
+
 # METADATA
-# -----------------------
 
 def save_metadata(series_id, year, month, rows):
 
@@ -89,12 +79,14 @@ def save_metadata(series_id, year, month, rows):
 
     history.append(record)
 
+    METADATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+
     with open(METADATA_FILE, "w") as f:
         json.dump(history, f, indent=2)
 
-# -----------------------
+
+
 # LOAD PARTITION
-# -----------------------
 
 def load_partition(file: Path, engine):
 
@@ -105,6 +97,7 @@ def load_partition(file: Path, engine):
     df = pd.read_parquet(file)
 
     if df.empty:
+        logger.warning("Empty parquet file")
         return 0
 
     retries = 0
@@ -112,32 +105,51 @@ def load_partition(file: Path, engine):
     while retries < MAX_RETRIES:
 
         try:
-            # جلوگیری از duplicate
-            try:
-                existing = pd.read_sql(
-                    f"""
-                    SELECT date
-                    FROM {TABLE_NAME}
-                    WHERE series_id = '{series_id}'
-                    AND date >= '{year}-{month}-01'
-                    """,
-                    engine
-                )
+            # ======================
+            # FETCH EXISTING DATA
+            # ======================
 
-                df_new = df[~df["date"].isin(existing["date"])]
+            query = text(f"""
+                SELECT observation_date
+                FROM {TABLE_NAME}
+                WHERE series_id = :series_id
+                AND observation_date >= :start_date
+            """)
 
-            except Exception:
+            existing = pd.read_sql(
+                query,
+                engine,
+                params={
+                    "series_id": series_id,
+                    "start_date": f"{year}-{month}-01"
+                }
+            )
+
+            # ======================
+            # FILTER NEW DATA
+            # ======================
+
+            if not existing.empty:
+                df_new = df[
+                    ~df["observation_date"].isin(existing["observation_date"])
+                ]
+            else:
                 df_new = df
 
             if df_new.empty:
-                logger.info("No new data")
+                logger.info("No new data to insert")
                 return 0
+
+            # ======================
+            # INSERT DATA
+            # ======================
 
             df_new.to_sql(
                 TABLE_NAME,
                 engine,
                 if_exists="append",
-                index=False
+                index=False,
+                method="multi"
             )
 
             rows = len(df_new)
@@ -152,20 +164,19 @@ def load_partition(file: Path, engine):
 
             retries += 1
 
-            logger.warning(f"Retry {retries}")
+            logger.warning(f"Retry {retries}/{MAX_RETRIES}")
             logger.warning(str(e))
 
             sleep(RETRY_DELAY)
 
-    logger.error("FAILED partition")
+    logger.error(f"FAILED partition {series_id} {year}-{month}")
 
     return 0
 
-# -----------------------
-# MAIN
-# -----------------------
 
-def main():
+# MAIN
+
+def load_fred_staging():
 
     logger.info("Starting FRED Load Pipeline")
 
@@ -179,14 +190,15 @@ def main():
 
     engine = create_engine(DB_URI)
 
-    total = 0
+    total_rows = 0
 
     for f in files:
-        total += load_partition(f, engine)
+        total_rows += load_partition(f, engine)
 
-    logger.info(f"Total rows loaded: {total}")
+    logger.info(f"Total rows loaded: {total_rows}")
 
-# -----------------------
+
+# ENTRY POINT
 
 if __name__ == "__main__":
-    main()
+    load_fred_staging()
