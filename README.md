@@ -78,7 +78,7 @@ This structure allows efficient analytical querying and BI integration.
 
 ---
 
-## 🧠 Key Features
+## Key Features
 
 - Modular ETL design (scalable architecture)
 - Multi-source data integration
